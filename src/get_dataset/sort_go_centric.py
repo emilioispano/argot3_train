@@ -2,7 +2,6 @@
 
 import argparse
 import sys
-from concurrent.futures import ProcessPoolExecutor
 from tqdm import tqdm
 
 
@@ -11,7 +10,6 @@ def get_args():
 
     parser.add_argument('-g', '--gocentric', required=True)
     parser.add_argument('-o', '--outfile', required=True)
-    parser.add_argument('-t', '--threads', required=False, default=64, type=int)
 
     return vars(parser.parse_args())
 
@@ -69,22 +67,15 @@ def get_chunks(infile):
         yield current_chunk
 
 
-def write_chunks(chunks, outfile):
-    with open(outfile, 'w') as outfile:
-        for chunk in chunks:
-            for line in chunk:
-                outfile.write(line)
-
-
 if __name__ == '__main__':
     args = get_args()
     go_centric = args['gocentric']
-    num_processes = args['threads']
     out_file = args['outfile']
 
-    print(f'Getting chunk from {go_centric}...', file=sys.stderr)
-    with ProcessPoolExecutor(max_workers=num_processes) as executor:
-        chunks_sorted = list(executor.map(sort_chunk, get_chunks(go_centric)))
+    print(f'Getting chunk from {go_centric} AND saving to {out_file}...', file=sys.stderr)
+    with open(out_file, 'w') as out:
+        for chunk in get_chunks(go_centric):
+            sorted_chunk = sort_chunk(chunk)
+            for line in sorted_chunk:
+                out.write(line)
 
-    print(f'Writing output to {out_file}...', file=sys.stderr)
-    write_chunks(chunks_sorted, out_file)
