@@ -1,3 +1,5 @@
+order
 sbatch/
 intermediate_files/
 argot3.sif
+embeddings*

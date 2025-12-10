@@ -69,16 +69,17 @@ def link_prots(bpo, mfo, cco, annots):
 
 
 def write_out(outpath, annots, ont):
-    if not os.path.exists(outpath):
-        os.makedirs(outpath)
+    ont_out = os.path.join(outpath, ont)
+    if not os.path.exists(ont_out):
+        os.makedirs(ont_out)
 
-    print(f'All together in labels.{ont}')
+    print(f'All together in labels.{ont} in {outpath}')
     with open(os.path.join(outpath, f'labels.{ont}'), 'wb') as fp:
         pickle.dump(annots, fp)
 
-    print(f'One by one in PROTNAME.{ont}')
+    print(f'One by one in PROTNAME.{ont} in {ont_out}')
     for prot, gos in annots.items():
-        with open(os.path.join(outpath, f'{prot}.{ont}'), 'wb') as fp:
+        with open(os.path.join(ont_out, f'{prot}.{ont}'), 'wb') as fp:
             pickle.dump(gos, fp)
 
 
