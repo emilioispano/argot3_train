@@ -113,6 +113,13 @@ else
 
     if [ $save_annots -eq 1 ]
     then
-        python3 $src/save_go_onts.py -i $data/gos_per_prot.txt -g $go_owl -o $data/annotations/
+        python3 $src/get_constr.py -t $root_dir/taxonomy/ -c $root_dir/constraints/ -o $data/taxon_to_constr.tsv
+        grep "^>" $data/uids.fasta | sed -E 's/^>..?\|([^|]+)\|.*OX=([0-9]+).*/\1\t\2/' > $data/prot_to_tax.tsv
+        python3 $src/save_go_onts.py -i $data/gos_per_prot.txt \
+                                     -g $go_owl \
+                                     -c $root_dir/constraints/ \
+                                     -t $data/taxon_to_constr.tsv \
+                                     -p $data/prot_to_tax.tsv \
+                                     -o $data/annotations/
     fi
 fi

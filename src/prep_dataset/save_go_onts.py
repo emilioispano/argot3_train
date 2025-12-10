@@ -15,6 +15,9 @@ def get_args():
 
     parser.add_argument('-i', '--input', required=True)
     parser.add_argument('-g', '--owl', required=True)
+    parser.add_argument('-c', '--constr', required=True)
+    parser.add_argument('-t', '--taxa', required=True)
+    parser.add_argument('-p', '--prots', required=True)
     parser.add_argument('-o', '--output', required=True)
 
     return vars(parser.parse_args())
@@ -83,10 +86,34 @@ def write_out(outpath, annots, ont):
             pickle.dump(gos, fp)
 
 
+def filter_gos(propagated_annots, constraints, prot_tax, tax_con):
+    filt_annots = defaultdict(set)
+    count = 0
+    with tqdm(propagated_annots.items(), total=len(propagated_annots), desc='Filtering annotations') as pbar:
+        for prot, gos in pbar:
+            try:
+                tax = prot_tax[prot]
+                nod = tax_con[tax]
+                con = constraints[nod]
+            except KeyError:
+                con = set()
+            for go in gos:
+                if go in con:
+                    count += 1
+                else:
+                    filt_annots[prot].add(go)
+
+    print(f'Filtered out {count} annotations!')
+    return filt_annots
+
+
 if __name__ == '__main__':
     args = get_args()
     prots_gos = args['input']
     owl_file = args['owl']
+    const_dir = args['constr']
+    tax_to_const = args['taxa']
+    prot_to_tax = args['prots']
     annots_path = args['output']
 
     print('Getting annotations...')
@@ -94,6 +121,30 @@ if __name__ == '__main__':
 
     print('Reading owl file...')
     owl = GoOwl(owl_file)
+
+    print('Getting prot to taxa dict...')
+    prot_tax = {}
+    with open(prot_to_tax, 'r') as fp:
+        for line in fp:
+            prot, tax = line.strip().split('\t')
+            prot_tax[prot] = tax
+
+    print('Getting taxa to constr dict...')
+    tax_con = {}
+    with open(tax_to_const, 'r') as fp:
+        for line in fp:
+            tax, con = line.strip().split('\t')
+            tax_con[tax] = con
+
+    print('Loading constraints...')
+    files = os.listdir(const_dir)
+    constraints = defaultdict(set)
+    for file in files:
+        taxon = file.split('_')[0]
+        with open(os.path.join(const_dir, file), 'r') as fp:
+            for line in fp:
+                go, desc, ont = line.strip().split('\t')
+                constraints[taxon].add(go.replace(':', '_'))
 
     print('Sorting gos per ontology...')
     bpo = sort_ontology('GO_0008150', owl)
@@ -105,6 +156,7 @@ if __name__ == '__main__':
 
     print('Propagating gos...')
     propagated_annots = propagate_gos(annots, owl)
+    filtered_annots = filter_gos(propagated_annots, constraints, prot_tax, tax_con)
 
     print('Writing orders...')
     with open('BPO_order.txt', 'w') as fp:
@@ -115,7 +167,7 @@ if __name__ == '__main__':
         fp.write('\n'.join(cco))
 
     print('Linking proteins to gos...')
-    bpo, mfo, cco = link_prots(bpo, mfo, cco, propagated_annots)
+    bpo, mfo, cco = link_prots(bpo, mfo, cco, filtered_annots)
 
     print('Writing bpo...')
     write_out(annots_path, bpo, 'bpo')
